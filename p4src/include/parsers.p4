@@ -29,7 +29,7 @@ parser MyParser(packet_in packet,
 
     state parse_udpQuic {
         packet.extract(hdr.udpQuic);
-    	transition select(hdr.udpQuic.format){
+    	transition select(hdr.udpQuic.hdr_type){
     		0: parse_quicShort;
             1: parse_quicLong;
     		default: accept;

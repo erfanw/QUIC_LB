@@ -34,34 +34,39 @@ header udpQuic_t {
     bit<16> dstPort;
     bit<16> length;
     bit<16> checksum;
-    bit<1> format;
-    bit<7> packetType;
+    bit<1> hdr_type;
+    bit<1> fixed;
+    bit<2> pkt_type;
+    bit<4> version;
 }
 
 
 header quicShort_t{
-    bit<64> connID;
-    bit<32> pktNum;
+    bit<32> version;
+    bit<8> dcid_length;
+    bit<8> dcid_first_byte;
+    bit<8> server_id;
+    bit<48> dcid_residue;
+    bit<8> scid_length;
+    bit<64> src_cid;
 }
 
 header quicLong_t{
-    bit<64> connID;
-    bit<32> version;
-    bit<32> pktNum;
+    bit<8> dcid_first_byte;
+    bit<8> server_id;
+    bit<48> dcid_residue;
 }
 
 
 
 struct metadata {
-    ip4Addr_t addr;
-
+   bit<16> bucket_id;
 }
 
 struct headers {
     ethernet_t   ethernet;
     ipv4_t ipv4;
     udpQuic_t udpQuic;
-    
     quicShort_t quicShort;
     quicLong_t quicLong;
 }
