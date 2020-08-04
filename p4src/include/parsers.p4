@@ -57,7 +57,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
         packet.emit(hdr.udpQuic);
-        packet.emit(hdr.quicShort);
+       // packet.emit(hdr.quicShort);
         packet.emit(hdr.quicLong);
     }
 }
