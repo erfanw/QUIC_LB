@@ -93,38 +93,84 @@ control MyIngress(inout headers hdr,
 */
 
 
+        // Incremental checksum fix adapted from the pseudocode at https://p4.org/p4-spec/docs/PSA-v1.1.0.html#appendix-internetchecksum-implementation
+    action ones_complement_sum(in bit<16> x, in bit<16> y, out bit<16> sum) {
+        bit<17> ret = (bit<17>) x + (bit<17>) y;
+        if (ret[16:16] == 1) {
+            ret = ret + 1;
+        }
+        sum = ret[15:0];
+    }
+
+    // Restriction: data is a multiple of 16 bits long
+    action subtract(inout bit<16> sum, bit<16> d) {
+            ones_complement_sum(sum, ~d, sum);
+    }
+
+    action subtract32(inout bit<16> sum, bit<32> d) {
+            ones_complement_sum(sum, ~(bit<16>)d[15:0], sum);
+            ones_complement_sum(sum, ~(bit<16>)d[31:16], sum);
+    }
+
+    action add(inout bit<16> sum, bit<16> d) {
+            ones_complement_sum(sum, d, sum);
+    }
+
+    action add32(inout bit<16> sum, bit<32> d) {
+            ones_complement_sum(sum, (bit<16>)(d[15:0]), sum);
+            ones_complement_sum(sum, (bit<16>)(d[31:16]), sum);
+    }
+
+
     apply {
-        if(hdr.ipv4.dstAddr == virtual_ip) {    //packet from client
-            if(hdr.udpQuic.pkt_type == 0){      //Initial, or can check the first byte of dst_cid
-                bucket_counter.read(meta.bucket_id, 0);
-                
-                // we use the bucket index to find the server
-                get_server_from_bucket.apply();
-              
-                // new connection, update counter
-                meta.bucket_id = meta.bucket_id + 1;
+        bit <16> sum = 0;
+        subtract(sum, hdr.udpQuic.checksum);
+        subtract32(sum, hdr.ipv4.dstAddr);
+        subtract32(sum, hdr.ipv4.srcAddr);
+        subtract(sum, hdr.udpQuic.length);
+        
+        if(hdr.udpQuic.isValid()){                  //Only process Quic packets
+            if(hdr.ipv4.dstAddr == virtual_ip) {    //packet from client
+                if((hdr.udpQuic.hdr_type == 1) && (hdr.udpQuic.pkt_type == (bit<2>)0)){      //Initial, must be long header
+                    bucket_counter.read(meta.bucket_id, 0);
+                    
+                    // we use the bucket index to find the server
+                    get_server_from_bucket.apply();
+                    
+                    
+                    // new connection, update counter
+                    meta.bucket_id = meta.bucket_id + 1;
 
-                //Do the wrapping
-                if (meta.bucket_id == BUCKET_SIZE) {
-                    meta.bucket_id = 0;
+                    //Do the wrapping
+                    if (meta.bucket_id == BUCKET_SIZE) {
+                        meta.bucket_id = 0;
+                    }
+                    bucket_counter.write(0, meta.bucket_id);
                 }
-                bucket_counter.write(0, meta.bucket_id);
+                else {                               //non-Initial, the dcid must have a server_id.
+                    if (hdr.udpQuic.hdr_type == 1){
+                        get_server_from_id_long_header.apply();
+                    }
+                    else{
+                        get_server_from_id_short_header.apply();
+                    }
+                }
             }
-            else {                               //non-Initial, the dcid must have a server_id
-                if (hdr.udpQuic.hdr_type == 1){
-                    get_server_from_id_long_header.apply();
-                }
-                else{
-                    get_server_from_id_short_header.apply();
-                }
+
+            else {                                   //packet from servers. Just forward to the client.
+                hdr.ipv4.srcAddr = virtual_ip;
+                hdr.ethernet.dstAddr = client_mac;
+                standard_metadata.egress_spec = (bit<9>)1;
             }
         }
 
-        else {                                   //packet from servers. Just forward to the client.
-            hdr.ipv4.srcAddr = virtual_ip;
-            hdr.ethernet.dstAddr = client_mac;
-            standard_metadata.egress_spec = (bit<9>)1;
-        }
+
+        add(sum, hdr.udpQuic.length);
+        add32(sum, hdr.ipv4.srcAddr);
+        add32(sum, hdr.ipv4.dstAddr);
+        
+        hdr.udpQuic.checksum = ~sum;
+
     }
 
 }
@@ -147,7 +193,7 @@ control MyEgress(inout headers hdr,
 *************************************************************************/
 
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
-    bit<8> eight_zeroes = (bit<8>)0; 
+   // bit<8> eight_zeroes = (bit<8>)0; 
     apply {
         update_checksum(
             hdr.ipv4.isValid(),
@@ -168,7 +214,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
                 hdr.ipv4.hdrChecksum,
                 HashAlgorithm.csum16
         );
-
+/*
         update_checksum(
             hdr.udpQuic.isValid(),
                 {
@@ -184,7 +230,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
                 hdr.udpQuic.checksum,
                 HashAlgorithm.csum16
         );
-        
+*/      
     }
 }
 
