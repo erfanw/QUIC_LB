@@ -5,7 +5,7 @@ This implementation contains two parts: modification on picoquic_sample of picoq
 
 I assume that you are using the ETH-P4 VM [link](https://github.com/nsg-ethz/p4-learning). Please refer to their tutorial to set up the environment and run the code. 
 
-Also, picoquic needs to be installed [link](https://github.com/private-octopus/picoquic). Notice that prior to installing picoquic, you need to install picotls [link](https://github.com/h2o/picotls).
+Also, picoquic needs to be installed. Please refer to [link](https://github.com/private-octopus/picoquic). Notice that prior to installing picoquic, you need to install picotls. Please refer to [link](https://github.com/h2o/picotls).
 
 In the picoquic directory, please create two folders called `client_files` and `server_files`. Create an `index.html` in the `server_files` and write something in it.
 
