@@ -19,12 +19,12 @@ Assume there is a single VIP with IP=`10.0.0.254`, a single client at `10.0.0.1`
 
 This is now working with the "clear algorithm" of QUIC_LB. For testing, following the guidelines below:
 
-Firstly, please clone the `picoquic_sample` folder to your `picoquic` directory.
+Firstly, please copy the `/picoquic/sample` folder to your `picoquic` directory.
 
 Then, open four terminals. One for the mininet, the other three for hosts.
 
-On terminal 1, enter the QUIC_LB directory and launch:
-`sudo p4run`
+On terminal 1, enter the QUIC_LB directory and run `sudo p4run`.
+
 This will launch the Mininet enviroment.
 
 On terminal 2, 3 and 4, enter the picoquic directory. Terminal 2 will be assigned as a client, and terminal 3 & 4 will be servers.
