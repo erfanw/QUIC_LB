@@ -19,7 +19,7 @@ Assume there is a single VIP with IP=`10.0.0.254`, a single client at `10.0.0.1`
 
 This is now working with the "clear algorithm" of QUIC_LB. For testing, following the guidelines below:
 
-Firstly, please copy the `/picoquic/sample` folder to your `picoquic` directory.
+Firstly, please copy the `/picoquic/sample` folder to your `picoquic` directory. Then run `make` to compile the new changes.
 
 Then, open four terminals. One for the mininet, the other three for hosts.
 
