@@ -12,7 +12,7 @@ In the picoquic directory, please create two folders called `client_files` and `
 
 ## Network topology
 
-Assume there is a single VIP with IP=`10.0.0.254`, a single client at `10.0.0.1` and two servers at `10.0.0.2` (`server_id=0`) and `10.0.0.3` (`server_id=1`), respectively. We implemented a weighted LB with 6 buckets. The first four buckets are assigned to `10.0.0.2` and the last two to `10.0.0.3`.
+Assume there is a single VIP with IP=`10.0.0.254`, a single client at `10.0.0.1` and two servers at `10.0.0.2` (`server_id = 1`) and `10.0.0.3` (`server_id = 2`), respectively. We implemented a weighted LB with 6 buckets. The first four buckets are assigned to `10.0.0.2` and the last two to `10.0.0.3`.
 
 
 ## Stateless QUIC_LB
