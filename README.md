@@ -1,11 +1,11 @@
-# QUIC_LB Code
-This implementation contains two parts: modification on picoquic_sample of picoquic and new codes for P4 switch based on Mininet.
+# QUIC Load Balancer Code
+This implementation contains two parts: modification on picoquic_sample of picoquic and new codes for P4 switch based on Mininet. The current LB work is stateless, based on QUIC_LB clear algorithm, and tested with simulation. Work in progress to use the obfuscated algorithm for security reasons, test with real P4 switch and implement a stateful LB.
 
 ## Prerequisites
 
 I assume that you are using the ETH-P4 VM [link](https://github.com/nsg-ethz/p4-learning). Please refer to their tutorial to set up the environment and run the code. 
 
-Also, picoquic needs to be installed [link](https://github.com/private-octopus/picoquic). Notice that prior to installing picoquic, you need to install picotls [link](https://github.com/h2o/picotls).
+Also, picoquic needs to be installed. Please refer to [link](https://github.com/private-octopus/picoquic). Notice that prior to installing picoquic, you need to install picotls. Please refer to [link](https://github.com/h2o/picotls).
 
 In the picoquic directory, please create two folders called `client_files` and `server_files`. Create an `index.html` in the `server_files` and write something in it.
 
@@ -19,7 +19,7 @@ Assume there is a single VIP with IP=`10.0.0.254`, a single client at `10.0.0.1`
 
 This is now working with the "clear algorithm" of QUIC_LB. For testing, following the guidelines below:
 
-Firstly, please copy the `/picoquic/sample` folder to your `picoquic` directory.
+Firstly, please copy the `/picoquic/sample` folder to your `picoquic` directory. Then run `make` to compile the new changes.
 
 Then, open four terminals. One for the mininet, the other three for hosts.
 
