@@ -5,7 +5,9 @@
       "id" : 0,
       "fields" : [
         ["sum", 16, false],
-        ["metadata.bucket_id", 16, false]
+        ["metadata.bucket_id", 16, false],
+        ["metadata.hash", 16, false],
+        ["metadata.server_id", 16, false]
       ]
     },
     {
@@ -78,8 +80,8 @@
       "id" : 5,
       "fields" : [
         ["dcid_first_byte", 8, false],
-        ["server_id", 8, false],
-        ["dcid_residue", 48, false]
+        ["cookie", 16, false],
+        ["dcid_residue", 40, false]
       ]
     },
     {
@@ -89,8 +91,8 @@
         ["version", 32, false],
         ["dcid_length", 8, false],
         ["dcid_first_byte", 8, false],
-        ["server_id", 8, false],
-        ["dcid_residue", 48, false],
+        ["cookie", 16, false],
+        ["dcid_residue", 40, false],
         ["scid_length", 8, false],
         ["src_cid", 64, false]
       ]
@@ -353,15 +355,49 @@
       },
       "size" : 1,
       "bitwidth" : 16
+    },
+    {
+      "name" : "MyIngress.debug_hash",
+      "id" : 1,
+      "source_info" : {
+        "filename" : "p4src/l2_basic_forwarding.p4",
+        "line" : 43,
+        "column" : 25,
+        "source_fragment" : "debug_hash"
+      },
+      "size" : 1,
+      "bitwidth" : 16
     }
   ],
   "calculations" : [
     {
       "name" : "calc",
       "id" : 0,
+      "algo" : "crc16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["quicLong", "dcid_first_byte"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_0",
+      "id" : 1,
+      "algo" : "crc16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["quicShort", "dcid_first_byte"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_1",
+      "id" : 2,
       "source_info" : {
         "filename" : "p4src/l2_basic_forwarding.p4",
-        "line" : 198,
+        "line" : 212,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },
@@ -439,155 +475,69 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.fwd_to_server",
+      "name" : "MyIngress.compute_hash",
       "id" : 3,
-      "runtime_data" : [
-        {
-          "name" : "egress_port",
-          "bitwidth" : 9
-        },
-        {
-          "name" : "dip",
-          "bitwidth" : 32
-        },
-        {
-          "name" : "dmac",
-          "bitwidth" : 48
-        }
-      ],
+      "runtime_data" : [],
       "primitives" : [
         {
-          "op" : "assign",
+          "op" : "modify_field_with_hash_based_offset",
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["ipv4", "dstAddr"]
+              "value" : ["scalars", "metadata.hash"]
             },
             {
-              "type" : "runtime_data",
-              "value" : 1
+              "type" : "hexstr",
+              "value" : "0x0000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0xffff"
             }
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 43,
+            "line" : 46,
             "column" : 8,
-            "source_fragment" : "hdr.ipv4.dstAddr = dip"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["ethernet", "dstAddr"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 2
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 44,
-            "column" : 8,
-            "source_fragment" : "hdr.ethernet.dstAddr = dmac"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["standard_metadata", "egress_spec"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 0
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 45,
-            "column" : 8,
-            "source_fragment" : "standard_metadata.egress_spec = egress_port"
+            "source_fragment" : "hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535)"
           }
         }
       ]
     },
     {
-      "name" : "MyIngress.fwd_to_server",
+      "name" : "MyIngress.compute_hash",
       "id" : 4,
-      "runtime_data" : [
-        {
-          "name" : "egress_port",
-          "bitwidth" : 9
-        },
-        {
-          "name" : "dip",
-          "bitwidth" : 32
-        },
-        {
-          "name" : "dmac",
-          "bitwidth" : 48
-        }
-      ],
+      "runtime_data" : [],
       "primitives" : [
         {
-          "op" : "assign",
+          "op" : "modify_field_with_hash_based_offset",
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["ipv4", "dstAddr"]
+              "value" : ["scalars", "metadata.hash"]
             },
             {
-              "type" : "runtime_data",
-              "value" : 1
+              "type" : "hexstr",
+              "value" : "0x0000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_0"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0xffff"
             }
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 43,
+            "line" : 46,
             "column" : 8,
-            "source_fragment" : "hdr.ipv4.dstAddr = dip"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["ethernet", "dstAddr"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 2
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 44,
-            "column" : 8,
-            "source_fragment" : "hdr.ethernet.dstAddr = dmac"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["standard_metadata", "egress_spec"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 0
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 45,
-            "column" : 8,
-            "source_fragment" : "standard_metadata.egress_spec = egress_port"
+            "source_fragment" : "hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535)"
           }
         }
       ]
@@ -624,7 +574,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 43,
+            "line" : 50,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.dstAddr = dip"
           }
@@ -643,7 +593,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 44,
+            "line" : 51,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dmac"
           }
@@ -662,7 +612,161 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 45,
+            "line" : 52,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = egress_port"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.fwd_to_server",
+      "id" : 6,
+      "runtime_data" : [
+        {
+          "name" : "egress_port",
+          "bitwidth" : 9
+        },
+        {
+          "name" : "dip",
+          "bitwidth" : 32
+        },
+        {
+          "name" : "dmac",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 50,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.dstAddr = dip"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 2
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 51,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dmac"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 52,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = egress_port"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.fwd_to_server",
+      "id" : 7,
+      "runtime_data" : [
+        {
+          "name" : "egress_port",
+          "bitwidth" : 9
+        },
+        {
+          "name" : "dip",
+          "bitwidth" : 32
+        },
+        {
+          "name" : "dmac",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 50,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.dstAddr = dip"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 2
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 51,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dmac"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 52,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = egress_port"
           }
@@ -671,7 +775,7 @@
     },
     {
       "name" : "MyIngress.subtract",
-      "id" : 6,
+      "id" : 8,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -966,7 +1070,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -975,7 +1079,7 @@
     },
     {
       "name" : "MyIngress.subtract",
-      "id" : 7,
+      "id" : 9,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -1270,7 +1374,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -1279,7 +1383,7 @@
     },
     {
       "name" : "MyIngress.subtract32",
-      "id" : 8,
+      "id" : 10,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -2699,7 +2803,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -2708,7 +2812,7 @@
     },
     {
       "name" : "MyIngress.subtract32",
-      "id" : 9,
+      "id" : 11,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -4128,7 +4232,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -4137,7 +4241,7 @@
     },
     {
       "name" : "MyIngress.add",
-      "id" : 10,
+      "id" : 12,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -4381,7 +4485,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -4390,7 +4494,7 @@
     },
     {
       "name" : "MyIngress.add32",
-      "id" : 11,
+      "id" : 13,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -5606,7 +5710,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -5615,7 +5719,7 @@
     },
     {
       "name" : "MyIngress.add32",
-      "id" : 12,
+      "id" : 14,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6831,7 +6935,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 102,
+            "line" : 111,
             "column" : 14,
             "source_fragment" : "ret[15:0]; ..."
           }
@@ -6839,8 +6943,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding126",
-      "id" : 13,
+      "name" : "l2_basic_forwarding135",
+      "id" : 15,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6857,7 +6961,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 126,
+            "line" : 135,
             "column" : 8,
             "source_fragment" : "bit <16> sum = 0;"
           }
@@ -6865,8 +6969,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding135",
-      "id" : 14,
+      "name" : "l2_basic_forwarding144",
+      "id" : 16,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6887,7 +6991,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 135,
+            "line" : 144,
             "column" : 20,
             "source_fragment" : "bucket_counter.read(meta.bucket_id, 0)"
           }
@@ -6895,8 +6999,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding146",
-      "id" : 15,
+      "name" : "l2_basic_forwarding155",
+      "id" : 17,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6913,7 +7017,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 146,
+            "line" : 155,
             "column" : 24,
             "source_fragment" : "meta.bucket_id = 0"
           }
@@ -6921,8 +7025,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding142",
-      "id" : 16,
+      "name" : "l2_basic_forwarding151",
+      "id" : 18,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6962,7 +7066,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 142,
+            "line" : 151,
             "column" : 20,
             "source_fragment" : "meta.bucket_id = meta.bucket_id + 1"
           }
@@ -6970,8 +7074,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding148",
-      "id" : 17,
+      "name" : "l2_basic_forwarding157",
+      "id" : 19,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -6992,7 +7096,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 148,
+            "line" : 157,
             "column" : 20,
             "source_fragment" : "bucket_counter.write(0, meta.bucket_id)"
           }
@@ -7000,8 +7104,109 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding161",
-      "id" : 18,
+      "name" : "l2_basic_forwarding162",
+      "id" : 20,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.debug_hash"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.hash"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 162,
+            "column" : 24,
+            "source_fragment" : "debug_hash.write(0, meta.hash)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.server_id"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "^",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "metadata.hash"]
+                  },
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["quicLong", "cookie"]
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 163,
+            "column" : 24,
+            "source_fragment" : "meta.server_id = meta.hash ^ hdr.quicLong.cookie"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "l2_basic_forwarding168",
+      "id" : 21,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "metadata.server_id"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "^",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "metadata.hash"]
+                  },
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["quicShort", "cookie"]
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 168,
+            "column" : 24,
+            "source_fragment" : "meta.server_id = meta.hash ^ hdr.quicShort.cookie"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "l2_basic_forwarding175",
+      "id" : 22,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -7056,7 +7261,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 163,
+            "line" : 177,
             "column" : 16,
             "source_fragment" : "standard_metadata.egress_spec = (bit<9>)1"
           }
@@ -7064,8 +7269,8 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding172",
-      "id" : 19,
+      "name" : "l2_basic_forwarding186",
+      "id" : 23,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -7102,7 +7307,7 @@
           ],
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 172,
+            "line" : 186,
             "column" : 8,
             "source_fragment" : "hdr.udpQuic.checksum = ~sum"
           }
@@ -7120,14 +7325,14 @@
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
-      "init_table" : "tbl_l2_basic_forwarding126",
+      "init_table" : "tbl_l2_basic_forwarding135",
       "tables" : [
         {
-          "name" : "tbl_l2_basic_forwarding126",
+          "name" : "tbl_l2_basic_forwarding135",
           "id" : 0,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 126,
+            "line" : 135,
             "column" : 8,
             "source_fragment" : "bit <16> sum = 0;"
           },
@@ -7138,14 +7343,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [13],
-          "actions" : ["l2_basic_forwarding126"],
+          "action_ids" : [15],
+          "actions" : ["l2_basic_forwarding135"],
           "base_default_next" : "tbl_subtract",
           "next_tables" : {
-            "l2_basic_forwarding126" : "tbl_subtract"
+            "l2_basic_forwarding135" : "tbl_subtract"
           },
           "default_entry" : {
-            "action_id" : 13,
+            "action_id" : 15,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7156,7 +7361,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 127,
+            "line" : 136,
             "column" : 8,
             "source_fragment" : "subtract(sum, hdr.udpQuic.checksum)"
           },
@@ -7167,14 +7372,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [6],
+          "action_ids" : [8],
           "actions" : ["MyIngress.subtract"],
           "base_default_next" : "tbl_subtract32",
           "next_tables" : {
             "MyIngress.subtract" : "tbl_subtract32"
           },
           "default_entry" : {
-            "action_id" : 6,
+            "action_id" : 8,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7185,7 +7390,7 @@
           "id" : 2,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 128,
+            "line" : 137,
             "column" : 8,
             "source_fragment" : "subtract32(sum, hdr.ipv4.dstAddr)"
           },
@@ -7196,14 +7401,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [8],
+          "action_ids" : [10],
           "actions" : ["MyIngress.subtract32"],
           "base_default_next" : "tbl_subtract32_0",
           "next_tables" : {
             "MyIngress.subtract32" : "tbl_subtract32_0"
           },
           "default_entry" : {
-            "action_id" : 8,
+            "action_id" : 10,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7214,7 +7419,7 @@
           "id" : 3,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 129,
+            "line" : 138,
             "column" : 8,
             "source_fragment" : "subtract32(sum, hdr.ipv4.srcAddr)"
           },
@@ -7225,14 +7430,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [9],
+          "action_ids" : [11],
           "actions" : ["MyIngress.subtract32"],
           "base_default_next" : "tbl_subtract_0",
           "next_tables" : {
             "MyIngress.subtract32" : "tbl_subtract_0"
           },
           "default_entry" : {
-            "action_id" : 9,
+            "action_id" : 11,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7243,7 +7448,7 @@
           "id" : 4,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 130,
+            "line" : 139,
             "column" : 8,
             "source_fragment" : "subtract(sum, hdr.udpQuic.length)"
           },
@@ -7254,25 +7459,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [7],
+          "action_ids" : [9],
           "actions" : ["MyIngress.subtract"],
           "base_default_next" : "node_7",
           "next_tables" : {
             "MyIngress.subtract" : "node_7"
           },
           "default_entry" : {
-            "action_id" : 7,
+            "action_id" : 9,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding135",
+          "name" : "tbl_l2_basic_forwarding144",
           "id" : 5,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 135,
+            "line" : 144,
             "column" : 20,
             "source_fragment" : "bucket_counter.read(meta.bucket_id, 0)"
           },
@@ -7283,14 +7488,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [14],
-          "actions" : ["l2_basic_forwarding135"],
+          "action_ids" : [16],
+          "actions" : ["l2_basic_forwarding144"],
           "base_default_next" : "MyIngress.get_server_from_bucket",
           "next_tables" : {
-            "l2_basic_forwarding135" : "MyIngress.get_server_from_bucket"
+            "l2_basic_forwarding144" : "MyIngress.get_server_from_bucket"
           },
           "default_entry" : {
-            "action_id" : 14,
+            "action_id" : 16,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7301,7 +7506,7 @@
           "id" : 6,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 54,
+            "line" : 63,
             "column" : 10,
             "source_fragment" : "get_server_from_bucket"
           },
@@ -7319,12 +7524,12 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [3, 0],
+          "action_ids" : [5, 0],
           "actions" : ["MyIngress.fwd_to_server", "NoAction"],
-          "base_default_next" : "tbl_l2_basic_forwarding142",
+          "base_default_next" : "tbl_l2_basic_forwarding151",
           "next_tables" : {
-            "MyIngress.fwd_to_server" : "tbl_l2_basic_forwarding142",
-            "NoAction" : "tbl_l2_basic_forwarding142"
+            "MyIngress.fwd_to_server" : "tbl_l2_basic_forwarding151",
+            "NoAction" : "tbl_l2_basic_forwarding151"
           },
           "default_entry" : {
             "action_id" : 0,
@@ -7334,11 +7539,11 @@
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding142",
+          "name" : "tbl_l2_basic_forwarding151",
           "id" : 7,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 142,
+            "line" : 151,
             "column" : 35,
             "source_fragment" : "="
           },
@@ -7349,25 +7554,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [16],
-          "actions" : ["l2_basic_forwarding142"],
+          "action_ids" : [18],
+          "actions" : ["l2_basic_forwarding151"],
           "base_default_next" : "node_13",
           "next_tables" : {
-            "l2_basic_forwarding142" : "node_13"
+            "l2_basic_forwarding151" : "node_13"
           },
           "default_entry" : {
-            "action_id" : 16,
+            "action_id" : 18,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding146",
+          "name" : "tbl_l2_basic_forwarding155",
           "id" : 8,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 146,
+            "line" : 155,
             "column" : 39,
             "source_fragment" : "="
           },
@@ -7378,25 +7583,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [15],
-          "actions" : ["l2_basic_forwarding146"],
-          "base_default_next" : "tbl_l2_basic_forwarding148",
+          "action_ids" : [17],
+          "actions" : ["l2_basic_forwarding155"],
+          "base_default_next" : "tbl_l2_basic_forwarding157",
           "next_tables" : {
-            "l2_basic_forwarding146" : "tbl_l2_basic_forwarding148"
+            "l2_basic_forwarding155" : "tbl_l2_basic_forwarding157"
           },
           "default_entry" : {
-            "action_id" : 15,
+            "action_id" : 17,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding148",
+          "name" : "tbl_l2_basic_forwarding157",
           "id" : 9,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 148,
+            "line" : 157,
             "column" : 20,
             "source_fragment" : "bucket_counter.write(0, meta.bucket_id)"
           },
@@ -7407,14 +7612,72 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [17],
-          "actions" : ["l2_basic_forwarding148"],
+          "action_ids" : [19],
+          "actions" : ["l2_basic_forwarding157"],
           "base_default_next" : "tbl_add",
           "next_tables" : {
-            "l2_basic_forwarding148" : "tbl_add"
+            "l2_basic_forwarding157" : "tbl_add"
           },
           "default_entry" : {
-            "action_id" : 17,
+            "action_id" : 19,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_compute_hash",
+          "id" : 10,
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 161,
+            "column" : 24,
+            "source_fragment" : "compute_hash(hdr.quicLong.dcid_first_byte)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [3],
+          "actions" : ["MyIngress.compute_hash"],
+          "base_default_next" : "tbl_l2_basic_forwarding162",
+          "next_tables" : {
+            "MyIngress.compute_hash" : "tbl_l2_basic_forwarding162"
+          },
+          "default_entry" : {
+            "action_id" : 3,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_l2_basic_forwarding162",
+          "id" : 11,
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 162,
+            "column" : 24,
+            "source_fragment" : "debug_hash.write(0, meta.hash); ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [20],
+          "actions" : ["l2_basic_forwarding162"],
+          "base_default_next" : "MyIngress.get_server_from_id_long_header",
+          "next_tables" : {
+            "l2_basic_forwarding162" : "MyIngress.get_server_from_id_long_header"
+          },
+          "default_entry" : {
+            "action_id" : 20,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7422,18 +7685,18 @@
         },
         {
           "name" : "MyIngress.get_server_from_id_long_header",
-          "id" : 10,
+          "id" : 12,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 64,
+            "line" : 73,
             "column" : 9,
             "source_fragment" : "get_server_from_id_long_header"
           },
           "key" : [
             {
               "match_type" : "exact",
-              "name" : "hdr.quicLong.server_id",
-              "target" : ["quicLong", "server_id"],
+              "name" : "meta.server_id",
+              "target" : ["scalars", "metadata.server_id"],
               "mask" : null
             }
           ],
@@ -7443,7 +7706,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [4, 1],
+          "action_ids" : [6, 1],
           "actions" : ["MyIngress.fwd_to_server", "NoAction"],
           "base_default_next" : "tbl_add",
           "next_tables" : {
@@ -7458,19 +7721,77 @@
           }
         },
         {
-          "name" : "MyIngress.get_server_from_id_short_header",
-          "id" : 11,
+          "name" : "tbl_compute_hash_0",
+          "id" : 13,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 74,
+            "line" : 167,
+            "column" : 24,
+            "source_fragment" : "compute_hash(hdr.quicShort.dcid_first_byte)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [4],
+          "actions" : ["MyIngress.compute_hash"],
+          "base_default_next" : "tbl_l2_basic_forwarding168",
+          "next_tables" : {
+            "MyIngress.compute_hash" : "tbl_l2_basic_forwarding168"
+          },
+          "default_entry" : {
+            "action_id" : 4,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_l2_basic_forwarding168",
+          "id" : 14,
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 168,
+            "column" : 39,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [21],
+          "actions" : ["l2_basic_forwarding168"],
+          "base_default_next" : "MyIngress.get_server_from_id_short_header",
+          "next_tables" : {
+            "l2_basic_forwarding168" : "MyIngress.get_server_from_id_short_header"
+          },
+          "default_entry" : {
+            "action_id" : 21,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.get_server_from_id_short_header",
+          "id" : 15,
+          "source_info" : {
+            "filename" : "p4src/l2_basic_forwarding.p4",
+            "line" : 83,
             "column" : 9,
             "source_fragment" : "get_server_from_id_short_header"
           },
           "key" : [
             {
               "match_type" : "exact",
-              "name" : "hdr.quicShort.server_id",
-              "target" : ["quicShort", "server_id"],
+              "name" : "meta.server_id",
+              "target" : ["scalars", "metadata.server_id"],
               "mask" : null
             }
           ],
@@ -7480,7 +7801,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [5, 2],
+          "action_ids" : [7, 2],
           "actions" : ["MyIngress.fwd_to_server", "NoAction"],
           "base_default_next" : "tbl_add",
           "next_tables" : {
@@ -7495,11 +7816,11 @@
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding161",
-          "id" : 12,
+          "name" : "tbl_l2_basic_forwarding175",
+          "id" : 16,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 161,
+            "line" : 175,
             "column" : 33,
             "source_fragment" : "= virtual_ip; ..."
           },
@@ -7510,14 +7831,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [18],
-          "actions" : ["l2_basic_forwarding161"],
+          "action_ids" : [22],
+          "actions" : ["l2_basic_forwarding175"],
           "base_default_next" : "tbl_add",
           "next_tables" : {
-            "l2_basic_forwarding161" : "tbl_add"
+            "l2_basic_forwarding175" : "tbl_add"
           },
           "default_entry" : {
-            "action_id" : 18,
+            "action_id" : 22,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7525,10 +7846,10 @@
         },
         {
           "name" : "tbl_add",
-          "id" : 13,
+          "id" : 17,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 168,
+            "line" : 182,
             "column" : 8,
             "source_fragment" : "add(sum, hdr.udpQuic.length)"
           },
@@ -7539,14 +7860,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [10],
+          "action_ids" : [12],
           "actions" : ["MyIngress.add"],
           "base_default_next" : "tbl_add32",
           "next_tables" : {
             "MyIngress.add" : "tbl_add32"
           },
           "default_entry" : {
-            "action_id" : 10,
+            "action_id" : 12,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7554,10 +7875,10 @@
         },
         {
           "name" : "tbl_add32",
-          "id" : 14,
+          "id" : 18,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 169,
+            "line" : 183,
             "column" : 8,
             "source_fragment" : "add32(sum, hdr.ipv4.srcAddr)"
           },
@@ -7568,14 +7889,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [11],
+          "action_ids" : [13],
           "actions" : ["MyIngress.add32"],
           "base_default_next" : "tbl_add32_0",
           "next_tables" : {
             "MyIngress.add32" : "tbl_add32_0"
           },
           "default_entry" : {
-            "action_id" : 11,
+            "action_id" : 13,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7583,10 +7904,10 @@
         },
         {
           "name" : "tbl_add32_0",
-          "id" : 15,
+          "id" : 19,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 170,
+            "line" : 184,
             "column" : 8,
             "source_fragment" : "add32(sum, hdr.ipv4.dstAddr)"
           },
@@ -7597,25 +7918,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [12],
+          "action_ids" : [14],
           "actions" : ["MyIngress.add32"],
-          "base_default_next" : "tbl_l2_basic_forwarding172",
+          "base_default_next" : "tbl_l2_basic_forwarding186",
           "next_tables" : {
-            "MyIngress.add32" : "tbl_l2_basic_forwarding172"
+            "MyIngress.add32" : "tbl_l2_basic_forwarding186"
           },
           "default_entry" : {
-            "action_id" : 12,
+            "action_id" : 14,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding172",
-          "id" : 16,
+          "name" : "tbl_l2_basic_forwarding186",
+          "id" : 20,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 172,
+            "line" : 186,
             "column" : 29,
             "source_fragment" : "="
           },
@@ -7626,14 +7947,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [19],
-          "actions" : ["l2_basic_forwarding172"],
+          "action_ids" : [23],
+          "actions" : ["l2_basic_forwarding186"],
           "base_default_next" : null,
           "next_tables" : {
-            "l2_basic_forwarding172" : null
+            "l2_basic_forwarding186" : null
           },
           "default_entry" : {
-            "action_id" : 19,
+            "action_id" : 23,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -7647,7 +7968,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 132,
+            "line" : 141,
             "column" : 11,
             "source_fragment" : "hdr.udpQuic.isValid()"
           },
@@ -7670,7 +7991,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 133,
+            "line" : 142,
             "column" : 15,
             "source_fragment" : "hdr.ipv4.dstAddr == virtual_ip"
           },
@@ -7689,14 +8010,14 @@
             }
           },
           "true_next" : "node_9",
-          "false_next" : "tbl_l2_basic_forwarding161"
+          "false_next" : "tbl_l2_basic_forwarding175"
         },
         {
           "name" : "node_9",
           "id" : 2,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 134,
+            "line" : 143,
             "column" : 19,
             "source_fragment" : "(hdr.udpQuic.hdr_type == 1) && (hdr.udpQuic.pkt_type == (bit<2>)0)"
           },
@@ -7734,7 +8055,7 @@
               }
             }
           },
-          "true_next" : "tbl_l2_basic_forwarding135",
+          "true_next" : "tbl_l2_basic_forwarding144",
           "false_next" : "node_16"
         },
         {
@@ -7742,7 +8063,7 @@
           "id" : 3,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 145,
+            "line" : 154,
             "column" : 24,
             "source_fragment" : "meta.bucket_id == 6"
           },
@@ -7760,15 +8081,15 @@
               }
             }
           },
-          "true_next" : "tbl_l2_basic_forwarding146",
-          "false_next" : "tbl_l2_basic_forwarding148"
+          "true_next" : "tbl_l2_basic_forwarding155",
+          "false_next" : "tbl_l2_basic_forwarding157"
         },
         {
           "name" : "node_16",
           "id" : 4,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 151,
+            "line" : 160,
             "column" : 24,
             "source_fragment" : "hdr.udpQuic.hdr_type == 1"
           },
@@ -7786,8 +8107,8 @@
               }
             }
           },
-          "true_next" : "MyIngress.get_server_from_id_long_header",
-          "false_next" : "MyIngress.get_server_from_id_short_header"
+          "true_next" : "tbl_compute_hash",
+          "false_next" : "tbl_compute_hash_0"
         }
       ]
     },
@@ -7796,7 +8117,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "p4src/l2_basic_forwarding.p4",
-        "line" : 183,
+        "line" : 197,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -7812,13 +8133,13 @@
       "id" : 0,
       "source_info" : {
         "filename" : "p4src/l2_basic_forwarding.p4",
-        "line" : 198,
+        "line" : 212,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },
       "target" : ["ipv4", "hdrChecksum"],
       "type" : "generic",
-      "calculation" : "calc",
+      "calculation" : "calc_1",
       "verify" : false,
       "update" : true,
       "if_cond" : {

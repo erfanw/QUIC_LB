@@ -47,22 +47,24 @@ header quicLong_t{
     bit<32> version;
     bit<8> dcid_length;
     bit<8> dcid_first_byte;
-    bit<8> server_id;
-    bit<48> dcid_residue;
+    bit<16> cookie;
+    bit<40> dcid_residue;
     bit<8> scid_length;
     bit<64> src_cid;
 }
 
 header quicShort_t{
     bit<8> dcid_first_byte;
-    bit<8> server_id;
-    bit<48> dcid_residue;
+    bit<16> cookie;
+    bit<40> dcid_residue;
 }
 
 
 
 struct metadata {
    bit<16> bucket_id;
+   bit<16> hash;
+   bit<16> server_id;
 }
 
 struct headers {

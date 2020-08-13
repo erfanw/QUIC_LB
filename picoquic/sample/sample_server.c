@@ -41,6 +41,8 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <picoquic.h>
 #include <picosocks.h>
 #include <picoquic_utils.h>
@@ -67,6 +69,8 @@
  * for each of the call back events.
  */
 
+#define CRC16 0x8005
+
 typedef struct st_sample_server_stream_ctx_t {
     struct st_sample_server_stream_ctx_t* next_stream;
     struct st_sample_server_stream_ctx_t* previous_stream;
@@ -87,6 +91,60 @@ typedef struct st_sample_server_ctx_t {
     sample_server_stream_ctx_t* first_stream;
     sample_server_stream_ctx_t* last_stream;
 } sample_server_ctx_t;
+
+
+
+uint16_t gen_crc16(const uint8_t *data, uint16_t size)
+{
+    uint16_t out = 0;
+    int bits_read = 0, bit_flag;
+
+    /* Sanity check: */
+    if(data == NULL)
+        return 0;
+
+    while(size > 0)
+    {
+        bit_flag = out >> 15;
+
+        /* Get next bit: */
+        out <<= 1;
+        out |= (*data >> bits_read) & 1; // item a) work from the least significant bits
+
+        /* Increment bit counter: */
+        bits_read++;
+        if(bits_read > 7)
+        {
+            bits_read = 0;
+            data++;
+            size--;
+        }
+
+        /* Cycle check: */
+        if(bit_flag)
+            out ^= CRC16;
+
+    }
+
+    // item b) "push out" the last 16 bits
+    int i;
+    for (i = 0; i < 16; ++i) {
+        bit_flag = out >> 15;
+        out <<= 1;
+        if(bit_flag)
+            out ^= CRC16;
+    }
+
+    // item c) reverse the bits
+    uint16_t crc = 0;
+    i = 0x8000;
+    int j = 0x0001;
+    for (; i != 0; i >>=1, j <<= 1) {
+        if (i & out) crc |= j;
+    }
+
+    return crc;
+}
 
 sample_server_stream_ctx_t * sample_server_create_stream_context(sample_server_ctx_t* server_ctx, uint64_t stream_id)
 {
@@ -113,23 +171,31 @@ sample_server_stream_ctx_t * sample_server_create_stream_context(sample_server_c
 int sample_server_open_stream(sample_server_ctx_t* server_ctx, sample_server_stream_ctx_t* stream_ctx)
 {
     int ret = 0;
-    char file_name[1024];
+    char file_path[1024];
 
     /* Keep track that the full file name was acquired. */
     stream_ctx->is_name_read = 1;
 
     /* Verify the name, then try to open the file */
-    if (server_ctx->default_dir_len + stream_ctx->name_length + 1 > sizeof(file_name)) {
+    if (server_ctx->default_dir_len + stream_ctx->name_length + 1 > sizeof(file_path)) {
         ret = PICOQUIC_SAMPLE_NAME_TOO_LONG_ERROR;
     }
     else {
-        /* Assume that the default path is empty of terminates with "/" or "\" depending on OS  */
-        memcpy(file_name, server_ctx->default_dir, server_ctx->default_dir_len);
-        memcpy(file_name + server_ctx->default_dir_len, stream_ctx->file_name, stream_ctx->name_length);
-        file_name[server_ctx->default_dir_len + stream_ctx->name_length] = 0;
+        /* Verify that the default path is empty of terminates with "/" or "\" depending on OS,
+         * and format the file path */
+        size_t dir_len = server_ctx->default_dir_len;
+        if (dir_len > 0) {
+            memcpy(file_path, server_ctx->default_dir, dir_len);
+            if (file_path[dir_len - 1] != PICOQUIC_FILE_SEPARATOR[0]) {
+                file_path[dir_len] = PICOQUIC_FILE_SEPARATOR[0];
+                dir_len++;
+            }
+        }
+        memcpy(file_path + dir_len, stream_ctx->file_name, stream_ctx->name_length);
+        file_path[dir_len + stream_ctx->name_length] = 0;
 
-        /* Using the picoquic_file_open API for portability to WIndows and Linux */
-        stream_ctx->F = picoquic_file_open(file_name, "rb");
+        /* Use the picoquic_file_open API for portability to Windows and Linux */
+        stream_ctx->F = picoquic_file_open(file_path, "rb");
 
         if (stream_ctx->F == NULL) {
             ret = PICOQUIC_SAMPLE_NO_SUCH_FILE_ERROR;
@@ -199,18 +265,7 @@ int sample_server_callback(picoquic_cnx_t* cnx,
     int ret = 0;
     sample_server_ctx_t* server_ctx = (sample_server_ctx_t*)callback_ctx;
     sample_server_stream_ctx_t* stream_ctx = (sample_server_stream_ctx_t*)v_stream_ctx;
- /*   
-    picoquic_load_balancer_cid_context_t lb_ctx;
-    lb_ctx.method = picoquic_load_balancer_cid_clear;
-    lb_ctx.server_id_length = 0x01;
-    lb_ctx.routing_bits_length = 0x01;
-    lb_ctx.first_byte = 0x01;
-    lb_ctx.server_id[0] = 0x01;
-    lb_ctx.server_id[1] = 0x02;
-    
-    void * cnx_id_cb_data;
-    cnx_id_cb_data = &lb_ctx;
-*/
+
     /* If this is the first reference to the connection, the application context is set
      * to the default value defined for the server. This default value contains the pointer
      * to the file directory in which all files are defined.
@@ -232,9 +287,7 @@ int sample_server_callback(picoquic_cnx_t* cnx,
                 memset(server_ctx, 0, sizeof(sample_server_ctx_t));
                 server_ctx->default_dir = "";
             }
-            
             picoquic_set_callback(cnx, sample_server_callback, server_ctx);
-            
         }
     }
 
@@ -246,7 +299,6 @@ int sample_server_callback(picoquic_cnx_t* cnx,
             if (stream_ctx == NULL) {
                 /* Create and initialize stream context */
                 stream_ctx = sample_server_create_stream_context(server_ctx, stream_id);
-                //printf("Server ready on port\n");
             }
 
             if (stream_ctx == NULL) {
@@ -382,8 +434,6 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
     /* Start: start the QUIC process with cert and key files */
     int ret = 0;
     picoquic_quic_t* quic = NULL;
-    //picoquic_load_balancer_cid_context_t * lb_ctx = NULL;
-    
     picoquic_server_sockets_t server_sockets;
     char const* qlog_dir = PICOQUIC_SAMPLE_SERVER_QLOG_DIR;
     struct sockaddr_storage addr_from;
@@ -396,37 +446,31 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
     uint64_t current_time = 0;
     int64_t delay_max = 10000000;
     picoquic_connection_id_t log_cid;
-    //picoquic_connection_id_t* cnx_id_returned = &log_cid;
     sample_server_ctx_t default_context = { 0 };
-/*
-    picoquic_load_balancer_cid_context_t lb_ctx;
-    lb_ctx.method = picoquic_load_balancer_cid_clear;
-    lb_ctx.server_id_length = 0x01;
-    lb_ctx.routing_bits_length = 0x01;
-    lb_ctx.first_byte = 0x01;
-    lb_ctx.server_id[0] = 0x01;
-    lb_ctx.server_id[1] = 0x02;
-    
-    void * cnx_id_cb_data;
-    cnx_id_cb_data = &lb_ctx;
-*/
+
+    default_context.default_dir = default_dir;
+    default_context.default_dir_len = strlen(default_dir);
+
     uint64_t server_id = atoi(server_id_char);
+
+    srand((int)time(0));
+    uint8_t rand_byte = rand() % 256;
+    uint8_t first_byte[1] = {rand_byte};
+    uint16_t crc16_hash = gen_crc16(first_byte, 1);
+    uint16_t cookie = server_id ^ crc16_hash;
     picoquic_load_balancer_config_t config_s = {
         picoquic_load_balancer_cid_clear,
-        1,
-        1,
+        2,
+        2,
         0,
         0,
         8,
-        0x08,
-        server_id,
+        first_byte[0],
+        cookie,
         { 0 },
         0
     };
     picoquic_load_balancer_config_t *config = &config_s;
-
-    default_context.default_dir = default_dir;
-    default_context.default_dir_len = strlen(default_dir);
 
     /* Open a UDP socket */
     ret = picoquic_open_server_sockets(&server_sockets, server_port);
@@ -441,10 +485,7 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
         quic = picoquic_create(8, server_cert, server_key, NULL, PICOQUIC_SAMPLE_ALPN,
             sample_server_callback, &default_context, NULL, NULL, NULL, current_time, NULL, NULL, NULL, 0);
         
-        
-
-
-        picoquic_lb_compat_cid_config(quic, config );
+        ret = picoquic_lb_compat_cid_config(quic, config);
 
         if (quic == NULL) {
             fprintf(stderr, "Could not create server context\n");
@@ -460,12 +501,8 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
             picoquic_set_log_level(quic, 1);
 
             picoquic_set_key_log_file_from_env(quic);
-            
-           // picoquic_lb_compat_cid_generate(quic, picoquic_get_local_cnxid(cnx), 
-            //        picoquic_get_remote_cnxid(cnx), cnx_id_cb_data, cnx_id_returned);
 
             printf("Server ready on port %d\n", server_port);
-            
         }
     }
 
@@ -505,7 +542,7 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
 
                 ret = picoquic_prepare_next_packet(quic, current_time,
                     send_buffer, sizeof(send_buffer), &send_length,
-                    &peer_addr, &local_addr, &if_index, &log_cid);
+                    &peer_addr, &local_addr, &if_index, &log_cid, NULL);
 
                 if (ret == 0 && send_length > 0) {
                     sock_ret = picoquic_send_through_server_sockets(&server_sockets,

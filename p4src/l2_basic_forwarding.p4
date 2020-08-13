@@ -35,15 +35,23 @@ control MyIngress(inout headers hdr,
     
     bit<32> virtual_ip = 0x0a0000fe;
     bit<48> client_mac = 0x00000a000001;
-
+   
     //Counter for the WRR
     register<bit<COUNTER_WIDTH>>(1) bucket_counter;
+
+    //A register for debugging, internal use only
+    //register<bit<16>>(1) debug_hash;
+
+    action compute_hash(bit<8> first_byte){
+        hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535);
+    }
 
     action fwd_to_server(bit<9> egress_port, bit<32> dip, bit<48> dmac) {
         hdr.ipv4.dstAddr = dip;
         hdr.ethernet.dstAddr = dmac;
         standard_metadata.egress_spec = egress_port;
     }
+
 /*
     action fwd_to_client(bit<9> egress_port, bit<32> sip, bit<48> smac) {
         hdr.ipv4.srcAddr = virtual_ip;
@@ -51,6 +59,7 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = egress_port;
     }
 */
+
     table get_server_from_bucket {
         key = {
             meta.bucket_id: exact;
@@ -63,7 +72,7 @@ control MyIngress(inout headers hdr,
 
    table get_server_from_id_long_header {
         key = {
-            hdr.quicLong.server_id: exact;
+            meta.server_id: exact;
         }
         actions = {
             fwd_to_server;
@@ -73,7 +82,7 @@ control MyIngress(inout headers hdr,
 
    table get_server_from_id_short_header {
         key = {
-            hdr.quicShort.server_id: exact;
+            meta.server_id: exact;
         }
         actions = {
             fwd_to_server;
@@ -149,9 +158,14 @@ control MyIngress(inout headers hdr,
                 }
                 else {                               //non-Initial, the dcid must have a server_id.
                     if (hdr.udpQuic.hdr_type == 1){
+                        compute_hash(hdr.quicLong.dcid_first_byte);
+                        //debug_hash.write(0, meta.hash);
+                        meta.server_id = meta.hash ^ hdr.quicLong.cookie;
                         get_server_from_id_long_header.apply();
                     }
                     else{
+                        compute_hash(hdr.quicShort.dcid_first_byte);
+                        meta.server_id = meta.hash ^ hdr.quicShort.cookie;
                         get_server_from_id_short_header.apply();
                     }
                 }
@@ -213,24 +227,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
                 },
                 hdr.ipv4.hdrChecksum,
                 HashAlgorithm.csum16
-        );
-/*
-        update_checksum(
-            hdr.udpQuic.isValid(),
-                {
-                    hdr.ipv4.srcAddr,
-                    hdr.ipv4.dstAddr,
-                    eight_zeroes,
-                    hdr.ipv4.protocol,
-                    hdr.udpQuic.length,
-                    hdr.udpQuic.srcPort,
-                    hdr.udpQuic.dstPort,
-                    hdr.udpQuic.length
-                },
-                hdr.udpQuic.checksum,
-                HashAlgorithm.csum16
-        );
-*/      
+        );   
     }
 }
 
