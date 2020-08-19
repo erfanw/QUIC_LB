@@ -64,6 +64,7 @@ header quicShort_t{
 struct metadata {
    bit<16> bucket_id;
    bit<16> hash;
+   bit<16> crc16;
    bit<16> server_id;
 }
 

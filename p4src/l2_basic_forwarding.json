@@ -7,6 +7,7 @@
         ["sum", 16, false],
         ["metadata.bucket_id", 16, false],
         ["metadata.hash", 16, false],
+        ["metadata.crc16", 16, false],
         ["metadata.server_id", 16, false]
       ]
     },
@@ -355,18 +356,6 @@
       },
       "size" : 1,
       "bitwidth" : 16
-    },
-    {
-      "name" : "MyIngress.debug_hash",
-      "id" : 1,
-      "source_info" : {
-        "filename" : "p4src/l2_basic_forwarding.p4",
-        "line" : 43,
-        "column" : 25,
-        "source_fragment" : "debug_hash"
-      },
-      "size" : 1,
-      "bitwidth" : 16
     }
   ],
   "calculations" : [
@@ -377,7 +366,11 @@
       "input" : [
         {
           "type" : "field",
-          "value" : ["quicLong", "dcid_first_byte"]
+          "value" : ["udpQuic", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
         }
       ]
     },
@@ -388,7 +381,11 @@
       "input" : [
         {
           "type" : "field",
-          "value" : ["quicShort", "dcid_first_byte"]
+          "value" : ["udpQuic", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
         }
       ]
     },
@@ -475,7 +472,7 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.compute_hash",
+      "name" : "MyIngress.crc_hash",
       "id" : 3,
       "runtime_data" : [],
       "primitives" : [
@@ -484,7 +481,7 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["scalars", "metadata.hash"]
+              "value" : ["scalars", "metadata.crc16"]
             },
             {
               "type" : "hexstr",
@@ -503,13 +500,13 @@
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 46,
             "column" : 8,
-            "source_fragment" : "hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535)"
+            "source_fragment" : "hash(meta.crc16, HashAlgorithm.crc16, (bit<16>)0, {port, addr}, (bit<16>)65535)"
           }
         }
       ]
     },
     {
-      "name" : "MyIngress.compute_hash",
+      "name" : "MyIngress.crc_hash",
       "id" : 4,
       "runtime_data" : [],
       "primitives" : [
@@ -518,7 +515,7 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["scalars", "metadata.hash"]
+              "value" : ["scalars", "metadata.crc16"]
             },
             {
               "type" : "hexstr",
@@ -537,7 +534,7 @@
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 46,
             "column" : 8,
-            "source_fragment" : "hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535)"
+            "source_fragment" : "hash(meta.crc16, HashAlgorithm.crc16, (bit<16>)0, {port, addr}, (bit<16>)65535)"
           }
         }
       ]
@@ -7104,33 +7101,10 @@
       ]
     },
     {
-      "name" : "l2_basic_forwarding162",
+      "name" : "l2_basic_forwarding163",
       "id" : 20,
       "runtime_data" : [],
       "primitives" : [
-        {
-          "op" : "register_write",
-          "parameters" : [
-            {
-              "type" : "register_array",
-              "value" : "MyIngress.debug_hash"
-            },
-            {
-              "type" : "hexstr",
-              "value" : "0x00000000"
-            },
-            {
-              "type" : "field",
-              "value" : ["scalars", "metadata.hash"]
-            }
-          ],
-          "source_info" : {
-            "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 162,
-            "column" : 24,
-            "source_fragment" : "debug_hash.write(0, meta.hash)"
-          }
-        },
         {
           "op" : "assign",
           "parameters" : [
@@ -7146,7 +7120,7 @@
                   "op" : "^",
                   "left" : {
                     "type" : "field",
-                    "value" : ["scalars", "metadata.hash"]
+                    "value" : ["scalars", "metadata.crc16"]
                   },
                   "right" : {
                     "type" : "field",
@@ -7160,7 +7134,7 @@
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 163,
             "column" : 24,
-            "source_fragment" : "meta.server_id = meta.hash ^ hdr.quicLong.cookie"
+            "source_fragment" : "meta.server_id = meta.crc16 ^ hdr.quicLong.cookie"
           }
         }
       ]
@@ -7185,7 +7159,7 @@
                   "op" : "^",
                   "left" : {
                     "type" : "field",
-                    "value" : ["scalars", "metadata.hash"]
+                    "value" : ["scalars", "metadata.crc16"]
                   },
                   "right" : {
                     "type" : "field",
@@ -7199,7 +7173,7 @@
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 168,
             "column" : 24,
-            "source_fragment" : "meta.server_id = meta.hash ^ hdr.quicShort.cookie"
+            "source_fragment" : "meta.server_id = meta.crc16 ^ hdr.quicShort.cookie"
           }
         }
       ]
@@ -7626,13 +7600,13 @@
           }
         },
         {
-          "name" : "tbl_compute_hash",
+          "name" : "tbl_crc_hash",
           "id" : 10,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 161,
             "column" : 24,
-            "source_fragment" : "compute_hash(hdr.quicLong.dcid_first_byte)"
+            "source_fragment" : "crc_hash(hdr.udpQuic.srcPort, hdr.ipv4.srcAddr)"
           },
           "key" : [],
           "match_type" : "exact",
@@ -7642,10 +7616,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [3],
-          "actions" : ["MyIngress.compute_hash"],
-          "base_default_next" : "tbl_l2_basic_forwarding162",
+          "actions" : ["MyIngress.crc_hash"],
+          "base_default_next" : "tbl_l2_basic_forwarding163",
           "next_tables" : {
-            "MyIngress.compute_hash" : "tbl_l2_basic_forwarding162"
+            "MyIngress.crc_hash" : "tbl_l2_basic_forwarding163"
           },
           "default_entry" : {
             "action_id" : 3,
@@ -7655,13 +7629,13 @@
           }
         },
         {
-          "name" : "tbl_l2_basic_forwarding162",
+          "name" : "tbl_l2_basic_forwarding163",
           "id" : 11,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
-            "line" : 162,
-            "column" : 24,
-            "source_fragment" : "debug_hash.write(0, meta.hash); ..."
+            "line" : 163,
+            "column" : 39,
+            "source_fragment" : "="
           },
           "key" : [],
           "match_type" : "exact",
@@ -7671,10 +7645,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [20],
-          "actions" : ["l2_basic_forwarding162"],
+          "actions" : ["l2_basic_forwarding163"],
           "base_default_next" : "MyIngress.get_server_from_id_long_header",
           "next_tables" : {
-            "l2_basic_forwarding162" : "MyIngress.get_server_from_id_long_header"
+            "l2_basic_forwarding163" : "MyIngress.get_server_from_id_long_header"
           },
           "default_entry" : {
             "action_id" : 20,
@@ -7721,13 +7695,13 @@
           }
         },
         {
-          "name" : "tbl_compute_hash_0",
+          "name" : "tbl_crc_hash_0",
           "id" : 13,
           "source_info" : {
             "filename" : "p4src/l2_basic_forwarding.p4",
             "line" : 167,
             "column" : 24,
-            "source_fragment" : "compute_hash(hdr.quicShort.dcid_first_byte)"
+            "source_fragment" : "crc_hash(hdr.udpQuic.srcPort, hdr.ipv4.srcAddr)"
           },
           "key" : [],
           "match_type" : "exact",
@@ -7737,10 +7711,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [4],
-          "actions" : ["MyIngress.compute_hash"],
+          "actions" : ["MyIngress.crc_hash"],
           "base_default_next" : "tbl_l2_basic_forwarding168",
           "next_tables" : {
-            "MyIngress.compute_hash" : "tbl_l2_basic_forwarding168"
+            "MyIngress.crc_hash" : "tbl_l2_basic_forwarding168"
           },
           "default_entry" : {
             "action_id" : 4,
@@ -8107,8 +8081,8 @@
               }
             }
           },
-          "true_next" : "tbl_compute_hash",
-          "false_next" : "tbl_compute_hash_0"
+          "true_next" : "tbl_crc_hash",
+          "false_next" : "tbl_crc_hash_0"
         }
       ]
     },

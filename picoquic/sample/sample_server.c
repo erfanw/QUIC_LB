@@ -290,7 +290,7 @@ int sample_server_callback(picoquic_cnx_t* cnx,
             picoquic_set_callback(cnx, sample_server_callback, server_ctx);
         }
     }
-
+    
     if (ret == 0) {
         switch (fin_or_event) {
         case picoquic_callback_stream_data:
@@ -417,6 +417,41 @@ int sample_server_callback(picoquic_cnx_t* cnx,
     return ret;
 }
 
+/*
+uint8_t get_random_first_byte() {
+    srand((int)time(0));
+    uint8_t rand_byte = rand() % 256;
+    //uint8_t *first_byte = rand_byte;
+    return rand_byte;
+}
+
+uint16_t get_server_cookie(uint8_t *first_byte, uint64_t server_id) {
+    uint16_t crc16_hash = gen_crc16(first_byte, 1);
+    uint16_t cookie = server_id ^ crc16_hash;
+    return cookie;
+}
+*/
+
+picoquic_load_balancer_config_t get_server_lb_config (uint16_t server_id){
+    srand((int)time(0));
+    uint8_t rand_byte = rand() % 256;
+    uint8_t *first_byte = &rand_byte;
+
+    picoquic_load_balancer_config_t config_s = {
+        picoquic_load_balancer_cid_clear,
+        2,
+        2,
+        0,
+        0,
+        8,
+        *first_byte,
+        server_id,
+        { 0 },
+        0
+    };
+    return config_s;
+}
+
 /* Server loop setup:
  * - Create the QUIC context.
  * - Open the sockets
@@ -451,25 +486,8 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
     default_context.default_dir = default_dir;
     default_context.default_dir_len = strlen(default_dir);
 
-    uint64_t server_id = atoi(server_id_char);
-
-    srand((int)time(0));
-    uint8_t rand_byte = rand() % 256;
-    uint8_t first_byte[1] = {rand_byte};
-    uint16_t crc16_hash = gen_crc16(first_byte, 1);
-    uint16_t cookie = server_id ^ crc16_hash;
-    picoquic_load_balancer_config_t config_s = {
-        picoquic_load_balancer_cid_clear,
-        2,
-        2,
-        0,
-        0,
-        8,
-        first_byte[0],
-        cookie,
-        { 0 },
-        0
-    };
+    uint16_t server_id = atoi(server_id_char);
+    picoquic_load_balancer_config_t config_s = get_server_lb_config(server_id);
     picoquic_load_balancer_config_t *config = &config_s;
 
     /* Open a UDP socket */
@@ -484,14 +502,14 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
         /* Create QUIC context */
         quic = picoquic_create(8, server_cert, server_key, NULL, PICOQUIC_SAMPLE_ALPN,
             sample_server_callback, &default_context, NULL, NULL, NULL, current_time, NULL, NULL, NULL, 0);
-        
-        ret = picoquic_lb_compat_cid_config(quic, config);
 
         if (quic == NULL) {
             fprintf(stderr, "Could not create server context\n");
             ret = -1;
         }
         else {
+            ret = picoquic_lb_compat_cid_config(quic, config);
+
             picoquic_set_cookie_mode(quic, 2);
 
             picoquic_set_default_congestion_algorithm(quic, picoquic_bbr_algorithm);
@@ -522,7 +540,8 @@ int picoquic_sample_server(int server_port, const char* server_cert, const char*
         if (bytes_recv < 0) {
             ret = -1;
         }
-        else {
+       
+        else{    
             if (bytes_recv > 0) {
                 /* Submit the packet to the server */
                 (void)picoquic_incoming_packet(quic, recv_buffer,

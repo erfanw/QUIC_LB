@@ -42,8 +42,8 @@ control MyIngress(inout headers hdr,
     //A register for debugging, internal use only
     //register<bit<16>>(1) debug_hash;
 
-    action compute_hash(bit<8> first_byte){
-        hash(meta.hash, HashAlgorithm.crc16, (bit<16>)0, {first_byte}, (bit<16>)65535);
+    action crc_hash(bit<16> port, bit<32> addr){
+        hash(meta.crc16, HashAlgorithm.crc16, (bit<16>)0, {port, addr}, (bit<16>)65535);
     }
 
     action fwd_to_server(bit<9> egress_port, bit<32> dip, bit<48> dmac) {
@@ -158,14 +158,14 @@ control MyIngress(inout headers hdr,
                 }
                 else {                               //non-Initial, the dcid must have a server_id.
                     if (hdr.udpQuic.hdr_type == 1){
-                        compute_hash(hdr.quicLong.dcid_first_byte);
-                        //debug_hash.write(0, meta.hash);
-                        meta.server_id = meta.hash ^ hdr.quicLong.cookie;
+                        crc_hash(hdr.udpQuic.srcPort, hdr.ipv4.srcAddr);
+                        //debug_hash.write(0, meta.crc16);
+                        meta.server_id = meta.crc16 ^ hdr.quicLong.cookie;
                         get_server_from_id_long_header.apply();
                     }
                     else{
-                        compute_hash(hdr.quicShort.dcid_first_byte);
-                        meta.server_id = meta.hash ^ hdr.quicShort.cookie;
+                        crc_hash(hdr.udpQuic.srcPort, hdr.ipv4.srcAddr);
+                        meta.server_id = meta.crc16 ^ hdr.quicShort.cookie;
                         get_server_from_id_short_header.apply();
                     }
                 }
