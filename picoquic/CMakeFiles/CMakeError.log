@@ -1,0 +1,59 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /media/sf_shared/picoquic/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_1a3fe/fast"
+make: Warning: File 'Makefile' has modification time 0.028 s in the future
+/usr/bin/make -f CMakeFiles/cmTC_1a3fe.dir/build.make CMakeFiles/cmTC_1a3fe.dir/build
+make[1]: Entering directory '/media/sf_shared/picoquic/CMakeFiles/CMakeTmp'
+make[1]: Warning: File 'CMakeFiles/cmTC_1a3fe.dir/flags.make' has modification time 0.024 s in the future
+Building C object CMakeFiles/cmTC_1a3fe.dir/CheckSymbolExists.c.o
+/usr/bin/cc     -o CMakeFiles/cmTC_1a3fe.dir/CheckSymbolExists.c.o   -c /media/sf_shared/picoquic/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_1a3fe
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1a3fe.dir/link.txt --verbose=1
+/usr/bin/cc       CMakeFiles/cmTC_1a3fe.dir/CheckSymbolExists.c.o  -o cmTC_1a3fe -rdynamic 
+CMakeFiles/cmTC_1a3fe.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x16): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_1a3fe.dir/build.make:97: recipe for target 'cmTC_1a3fe' failed
+make[1]: *** [cmTC_1a3fe] Error 1
+make[1]: Leaving directory '/media/sf_shared/picoquic/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_1a3fe/fast' failed
+make: *** [cmTC_1a3fe/fast] Error 2
+
+File /media/sf_shared/picoquic/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /media/sf_shared/picoquic/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_de47c/fast"
+make: Warning: File 'Makefile' has modification time 0.019 s in the future
+/usr/bin/make -f CMakeFiles/cmTC_de47c.dir/build.make CMakeFiles/cmTC_de47c.dir/build
+make[1]: Entering directory '/media/sf_shared/picoquic/CMakeFiles/CMakeTmp'
+make[1]: Warning: File 'CMakeFiles/cmTC_de47c.dir/flags.make' has modification time 0.014 s in the future
+Building C object CMakeFiles/cmTC_de47c.dir/CheckFunctionExists.c.o
+/usr/bin/cc    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_de47c.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.5/Modules/CheckFunctionExists.c
+Linking C executable cmTC_de47c
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_de47c.dir/link.txt --verbose=1
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_de47c.dir/CheckFunctionExists.c.o  -o cmTC_de47c -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_de47c.dir/build.make:97: recipe for target 'cmTC_de47c' failed
+make[1]: *** [cmTC_de47c] Error 1
+make[1]: Leaving directory '/media/sf_shared/picoquic/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_de47c/fast' failed
+make: *** [cmTC_de47c/fast] Error 2
+
+

@@ -1,0 +1,1 @@
+/usr/bin/cc  -std=c99 -Wall -Werror -O2 -g     CMakeFiles/picoquicdemo.dir/picoquicfirst/picoquicdemo.c.o CMakeFiles/picoquicdemo.dir/picoquicfirst/getopt.c.o  -o picoquicdemo -rdynamic libpicoquic-log.a libpicoquic-core.a libpicohttp-core.a /media/sf_shared/picotls/libpicotls-core.a /media/sf_shared/picotls/libpicotls-openssl.a -lssl -lcrypto -ldl -lpthread 

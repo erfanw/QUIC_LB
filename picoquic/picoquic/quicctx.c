@@ -2275,7 +2275,7 @@ picoquic_cnx_t* picoquic_create_cnx(picoquic_quic_t* quic,
             cnx_id_lb.id[1] ^= hash8[0];
             cnx_id_lb.id[2] ^= hash8[1];
             cnxid0 = picoquic_create_local_cnxid(cnx, &cnx_id_lb);
-            printf("connection established!\n");
+            printf("%x\n", hash);
         }
         /* Should return 0, since this is the first path */
         ret = picoquic_create_path(cnx, start_time, NULL, addr_to);

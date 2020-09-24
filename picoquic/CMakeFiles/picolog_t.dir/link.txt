@@ -1,0 +1,1 @@
+/usr/bin/cc  -std=c99 -Wall -Werror -O2 -g     CMakeFiles/picolog_t.dir/picolog/picolog.c.o  -o picolog_t -rdynamic libpicoquic-log.a libpicoquic-core.a /media/sf_shared/picotls/libpicotls-core.a /media/sf_shared/picotls/libpicotls-openssl.a -lssl -lcrypto -ldl -lpthread 

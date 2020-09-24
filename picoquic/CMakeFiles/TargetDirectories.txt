@@ -1,0 +1,11 @@
+/media/sf_shared/picoquic/CMakeFiles/picohttp-core.dir
+/media/sf_shared/picoquic/CMakeFiles/picolog_t.dir
+/media/sf_shared/picoquic/CMakeFiles/picoquic_ct.dir
+/media/sf_shared/picoquic/CMakeFiles/picoquicdemo.dir
+/media/sf_shared/picoquic/CMakeFiles/picohttp_ct.dir
+/media/sf_shared/picoquic/CMakeFiles/edit_cache.dir
+/media/sf_shared/picoquic/CMakeFiles/picoquic-log.dir
+/media/sf_shared/picoquic/CMakeFiles/picoquic_sample.dir
+/media/sf_shared/picoquic/CMakeFiles/picoquic-core.dir
+/media/sf_shared/picoquic/CMakeFiles/clangformat.dir
+/media/sf_shared/picoquic/CMakeFiles/rebuild_cache.dir
